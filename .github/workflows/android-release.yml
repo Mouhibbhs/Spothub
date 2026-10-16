@@ -51,7 +51,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-assets
-          cp build/app/outputs/flutter-apk/app-release.apk "release-assets/SpotHub-official-${GITHUB_REF_NAME}.apk"
+          cp build/app/outputs/flutter-apk/app-official-release.apk "release-assets/SpotHub-official-${GITHUB_REF_NAME}.apk"
           cp build/app/outputs/flutter-apk/app-personal-release.apk "release-assets/SpotHub-personal-${GITHUB_REF_NAME}.apk"
 
       - name: Publish GitHub release
