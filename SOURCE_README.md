@@ -50,6 +50,18 @@ APK output paths:
 - Personal debug: `build/app/outputs/flutter-apk/app-personal-debug.apk`
 - Personal release: `build/app/outputs/flutter-apk/app-personal-release.apk`
 
+## Download versioned APKs
+
+The [GitHub Releases page](https://github.com/Mouhibbhs/Spothub/releases) keeps APKs attached to each app version. Each tagged release contains both the official and personal flavor.
+
+To publish a new version:
+
+1. Update the `version` in `pubspec.yaml` (for example, `1.0.1+2`).
+2. Commit and push the source changes to `main`.
+3. Create and push the matching version tag, using the version before `+` (for example, `v1.0.1`).
+
+GitHub Actions builds both release APKs and adds them to a versioned release automatically. The release tag must match the version in `pubspec.yaml`.
+
 Both flavors display the app name **SpotHub** and can be installed side by side because they use different package IDs.
 
 ## Source layout
