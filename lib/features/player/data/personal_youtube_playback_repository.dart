@@ -99,9 +99,6 @@ class PersonalYouTubePlaybackSession
           .where((item) => !handler.hasTrack(item.videoId))
           .toList(growable: false);
       return handler.appendToQueue(missingTracks).then((_) async {
-        if (!handler.isStopped && initialPosition > Duration.zero) {
-          await handler.seek(initialPosition);
-        }
         await handler.play();
       });
     }

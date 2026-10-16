@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 class AppTheme {
   AppTheme._();
 
-  static const background = Color(0xFF121212);
-  static const surface = Color(0xFF181818);
-  static const elevated = Color(0xFF282828);
+  static const background = Color(0xFF131313);
+  static const surface = Color(0xFF1C1B1B);
+  static const elevated = Color(0xFF242424);
+  static const pressedSurface = Color(0xFF2A2A2A);
+  static const outline = Color(0xFF303030);
   static const accent = Color(0xFF1DB954);
+  static const accentPressed = Color(0xFF1ED760);
+  static const primaryText = Color(0xFFE5E2E1);
   static const secondaryText = Color(0xFFB3B3B3);
 
   static ThemeData get dark => ThemeData(
@@ -15,10 +19,16 @@ class AppTheme {
     scaffoldBackgroundColor: background,
     colorScheme: const ColorScheme.dark(
       primary: accent,
-      onPrimary: Color(0xFF06200F),
+      onPrimary: Color(0xFF001F0B),
       secondary: accent,
+      onSecondary: Color(0xFF001F0B),
       surface: surface,
-      onSurface: Colors.white,
+      onSurface: primaryText,
+      surfaceContainer: Color(0xFF201F1F),
+      surfaceContainerHigh: elevated,
+      surfaceContainerHighest: Color(0xFF353534),
+      outline: Color(0xFF869585),
+      outlineVariant: Color(0xFF3D4A3D),
       error: Color(0xFFFF7B75),
     ),
     appBarTheme: const AppBarTheme(
@@ -28,15 +38,16 @@ class AppTheme {
       surfaceTintColor: Colors.transparent,
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: background,
+      backgroundColor: surface,
       indicatorColor: Colors.transparent,
-      height: 62,
+      height: 64,
       labelTextStyle: WidgetStateProperty.resolveWith(
         (states) => TextStyle(
           color: states.contains(WidgetState.selected)
-              ? Colors.white
+              ? accent
               : secondaryText,
           fontSize: 10,
+          letterSpacing: 0.1,
           fontWeight: states.contains(WidgetState.selected)
               ? FontWeight.w600
               : FontWeight.w400,
@@ -45,14 +56,14 @@ class AppTheme {
       iconTheme: WidgetStateProperty.resolveWith(
         (states) => IconThemeData(
           color: states.contains(WidgetState.selected) ? accent : secondaryText,
-          size: 23,
+          size: 24,
         ),
       ),
     ),
     cardTheme: CardThemeData(
       color: surface,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       margin: EdgeInsets.zero,
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -61,24 +72,24 @@ class AppTheme {
       hintStyle: const TextStyle(color: secondaryText),
       labelStyle: const TextStyle(color: secondaryText),
       prefixIconColor: secondaryText,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(22),
-        borderSide: const BorderSide(color: accent, width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: accent, width: 1.2),
       ),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: surface,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     bottomSheetTheme: const BottomSheetThemeData(
       backgroundColor: surface,
@@ -90,7 +101,7 @@ class AppTheme {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: accent,
-        foregroundColor: const Color(0xFF071B0E),
+        foregroundColor: const Color(0xFF001F0B),
         minimumSize: const Size(0, 48),
         shape: const StadiumBorder(),
         textStyle: const TextStyle(fontWeight: FontWeight.w700),
@@ -120,23 +131,31 @@ class AppTheme {
       labelStyle: const TextStyle(fontSize: 13),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     ),
-    dividerColor: Colors.white.withValues(alpha: 0.08),
+    dividerColor: outline,
     textTheme: const TextTheme(
-      headlineMedium: TextStyle(
-        fontSize: 29,
-        height: 1.12,
+      displayLarge: TextStyle(
+        fontSize: 32,
+        height: 1.25,
         fontWeight: FontWeight.w800,
-        letterSpacing: -0.8,
+        letterSpacing: -0.7,
+      ),
+      headlineMedium: TextStyle(
+        fontSize: 26,
+        height: 1.23,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.55,
       ),
       headlineSmall: TextStyle(
-        fontSize: 23,
+        fontSize: 24,
         fontWeight: FontWeight.w700,
-        letterSpacing: -0.4,
+        letterSpacing: -0.35,
       ),
-      titleLarge: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+      titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
       titleMedium: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-      bodyMedium: TextStyle(fontSize: 14, color: Colors.white),
+      bodyMedium: TextStyle(fontSize: 14, color: primaryText),
       bodySmall: TextStyle(fontSize: 12, color: secondaryText),
+      labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+      labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
     ),
   );
 }

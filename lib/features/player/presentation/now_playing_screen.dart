@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/providers.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/widgets/artwork.dart';
+import '../../../core/widgets/music_motion.dart';
+import '../../../core/widgets/track_tile.dart';
 import '../../../features/downloads/presentation/download_actions.dart';
 import '../../../features/player/application/playback_controller.dart';
 import '../../../features/search/domain/track.dart';
@@ -67,6 +69,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen>
         ),
       );
     }
+
     final maxMilliseconds = playback.duration.inMilliseconds;
     final sliderValue =
         _dragValue ??
@@ -83,399 +86,480 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen>
     final isDownloaded = personal && track.canPlayOnYouTube
         ? ref.watch(downloadedTrackProvider(track.videoId)).value ?? false
         : false;
+    final remaining = playback.duration - playback.position;
+    final nextIndex = playback.queueIndex + 1;
+    final nextTrack =
+        playback.queueIndex >= 0 && nextIndex < playback.queue.length
+        ? playback.queue[nextIndex]
+        : null;
 
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
+        backgroundColor: playback.isPlaying
+            ? const Color(0xFF18251C)
+            : AppTheme.background,
         centerTitle: true,
         leading: const BackButton(),
-        title: Column(
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'NOW PLAYING',
-              style: TextStyle(
-                fontSize: 10,
-                letterSpacing: 1.5,
-                color: AppTheme.secondaryText,
-                fontWeight: FontWeight.w700,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Image.asset(
+                'final-icon.png',
+                width: 22,
+                height: 22,
+                fit: BoxFit.cover,
               ),
             ),
-            SizedBox(height: 2),
-            Text(
-              personal ? 'SpotHub Personal' : 'SpotHub',
-              style: TextStyle(fontSize: 14),
-            ),
+            const SizedBox(width: 9),
+            const Text('Now Playing'),
           ],
         ),
         actions: [
           IconButton(
             tooltip: 'Open queue',
-            onPressed: () => _showQueue(
-              context,
-              playback.queue,
-              playback.queueIndex,
-              playback.isRadio,
-            ),
+            onPressed: () => _showQueue(context, playback.isRadio),
             icon: const Icon(Icons.queue_music_rounded),
           ),
         ],
       ),
-      body: SafeArea(
-        top: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(22, 18, 22, 26),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: constraints.maxHeight - 44,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(personal ? 8 : 12),
-                    child: AspectRatio(
-                      aspectRatio: personal ? 1 : 16 / 9,
-                      child: personal
-                          ? AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 520),
-                              reverseDuration: const Duration(
-                                milliseconds: 360,
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: const Alignment(0, 0.82),
+            colors: playback.isPlaying
+                ? const [
+                    Color(0xFF1B3223),
+                    Color(0xFF171B18),
+                    AppTheme.background,
+                  ]
+                : const [
+                    Color(0xFF222522),
+                    Color(0xFF191A19),
+                    AppTheme.background,
+                  ],
+            stops: const [0, 0.42, 1],
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(22, 12, 22, 30),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 42,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 390),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.38),
+                                blurRadius: 34,
+                                offset: const Offset(0, 18),
                               ),
-                              switchInCurve: Curves.easeOutCubic,
-                              switchOutCurve: Curves.easeInCubic,
-                              transitionBuilder: (child, animation) {
-                                final scale = CurvedAnimation(
-                                  parent: animation,
-                                  curve: Curves.easeOutBack,
-                                );
-                                return FadeTransition(
-                                  opacity: animation,
-                                  child: SlideTransition(
-                                    position: Tween<Offset>(
-                                      begin: const Offset(0.055, 0),
-                                      end: Offset.zero,
-                                    ).animate(animation),
-                                    child: RotationTransition(
-                                      turns: Tween<double>(
-                                        begin: 0.012,
-                                        end: 0,
-                                      ).animate(animation),
-                                      child: ScaleTransition(
-                                        scale: Tween<double>(
-                                          begin: 0.88,
-                                          end: 1,
-                                        ).animate(scale),
-                                        child: child,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: Hero(
-                                key: ValueKey(track.videoId),
-                                tag: 'track-art-${track.videoId}',
-                                child: _PlayingArtwork(
-                                  isPlaying: playback.isPlaying,
-                                  child: Artwork(
-                                    key: ValueKey(track.videoId),
-                                    url: track.thumbnailUrl,
-                                    expand: true,
-                                    radius: 0,
-                                    icon: Icons.music_note_rounded,
-                                  ),
+                              BoxShadow(
+                                color: AppTheme.accent.withValues(
+                                  alpha: playback.isPlaying ? 0.08 : 0,
                                 ),
-                              ),
-                            )
-                          : ref
-                                    .read(playbackControllerProvider.notifier)
-                                    .playerSurface ??
-                                _PlayerPlaceholder(track: track),
-                    ),
-                  ),
-                  const SizedBox(height: 23),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 320),
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeInCubic,
-                          transitionBuilder: (child, animation) =>
-                              FadeTransition(
-                                opacity: animation,
-                                child: SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(0, 0.18),
-                                    end: Offset.zero,
-                                  ).animate(animation),
-                                  child: child,
-                                ),
-                              ),
-                          child: Column(
-                            key: ValueKey(track.videoId),
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                track.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 21,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.2,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                track.channelName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppTheme.secondaryText,
-                                  fontSize: 14,
-                                ),
+                                blurRadius: 42,
+                                spreadRadius: 3,
                               ),
                             ],
                           ),
-                        ),
-                      ),
-                      if (personal && track.canPlayOnYouTube)
-                        IconButton(
-                          tooltip: isDownloaded
-                              ? 'Downloaded for offline playback'
-                              : 'Download for offline playback',
-                          onPressed: isDownloaded || _isDownloadingTrack
-                              ? null
-                              : () => _downloadTrack(track),
-                          color: isDownloaded
-                              ? AppTheme.accent
-                              : AppTheme.secondaryText,
-                          icon: _isDownloadingTrack
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Icon(
-                                  isDownloaded
-                                      ? Icons.download_done_rounded
-                                      : Icons.download_for_offline_rounded,
-                                ),
-                        ),
-                      IconButton(
-                        tooltip: isFavorite
-                            ? 'Remove from Liked Songs'
-                            : 'Add to Liked Songs',
-                        onPressed: () => _toggleFavorite(track),
-                        icon: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 260),
-                          transitionBuilder: (child, animation) =>
-                              ScaleTransition(
-                                scale: CurvedAnimation(
-                                  parent: animation,
-                                  curve: Curves.easeOutBack,
-                                ),
-                                child: child,
-                              ),
-                          child: Icon(
-                            key: ValueKey(isFavorite),
-                            isFavorite
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_border_rounded,
-                            color: isFavorite ? AppTheme.accent : Colors.white,
-                            size: 27,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 17),
-                  if (maxMilliseconds > 0) ...[
-                    SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 3,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 5,
-                        ),
-                        overlayShape: const RoundSliderOverlayShape(
-                          overlayRadius: 12,
-                        ),
-                      ),
-                      child: Slider(
-                        value: sliderValue,
-                        max: maxMilliseconds.toDouble(),
-                        activeColor: AppTheme.accent,
-                        inactiveColor: Colors.white24,
-                        onChanged: playback.hasError
-                            ? null
-                            : (value) => setState(() => _dragValue = value),
-                        onChangeEnd: (value) {
-                          setState(() => _dragValue = null);
-                          ref
-                              .read(playbackControllerProvider.notifier)
-                              .seek(Duration(milliseconds: value.round()));
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _time(playback.position),
-                            style: const TextStyle(
-                              color: AppTheme.secondaryText,
-                              fontSize: 11,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: AspectRatio(
+                              aspectRatio: personal ? 1 : 16 / 9,
+                              child: personal
+                                  ? AnimatedSwitcher(
+                                      duration: const Duration(
+                                        milliseconds: 440,
+                                      ),
+                                      reverseDuration: const Duration(
+                                        milliseconds: 280,
+                                      ),
+                                      switchInCurve: Curves.easeOutCubic,
+                                      switchOutCurve: Curves.easeInCubic,
+                                      transitionBuilder: (child, animation) {
+                                        final settled = CurvedAnimation(
+                                          parent: animation,
+                                          curve: Curves.easeOutBack,
+                                        );
+                                        return FadeTransition(
+                                          opacity: animation,
+                                          child: SlideTransition(
+                                            position: Tween<Offset>(
+                                              begin: const Offset(0.12, 0.02),
+                                              end: Offset.zero,
+                                            ).animate(animation),
+                                            child: ScaleTransition(
+                                              scale: Tween<double>(
+                                                begin: 0.91,
+                                                end: 1,
+                                              ).animate(settled),
+                                              child: child,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: Hero(
+                                        key: ValueKey(track.videoId),
+                                        tag: 'track-art-${track.videoId}',
+                                        child: _PlayingArtwork(
+                                          isPlaying: playback.isPlaying,
+                                          child: Artwork(
+                                            key: ValueKey(
+                                              'player-art-${track.videoId}',
+                                            ),
+                                            url: track.thumbnailUrl,
+                                            expand: true,
+                                            radius: 0,
+                                            icon: Icons.music_note_rounded,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : ref
+                                            .read(
+                                              playbackControllerProvider
+                                                  .notifier,
+                                            )
+                                            .playerSurface ??
+                                        _PlayerPlaceholder(track: track),
                             ),
                           ),
-                          Text(
-                            _time(playback.duration),
-                            style: const TextStyle(
-                              color: AppTheme.secondaryText,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
-                  ] else
-                    const SizedBox(height: 16),
-                  const SizedBox(height: 11),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      if (personal)
-                        IconButton(
-                          tooltip: playback.isShuffling
-                              ? 'Turn shuffle off'
-                              : 'Turn shuffle on',
-                          onPressed: () => ref
-                              .read(playbackControllerProvider.notifier)
-                              .toggleShuffle(),
-                          color: playback.isShuffling
-                              ? AppTheme.accent
-                              : AppTheme.secondaryText,
-                          icon: const Icon(Icons.shuffle_rounded, size: 21),
-                        ),
-                      IconButton(
-                        tooltip: 'Previous video',
-                        onPressed: playback.canGoPrevious
-                            ? () => ref
-                                  .read(playbackControllerProvider.notifier)
-                                  .previous()
-                            : null,
-                        icon: const Icon(Icons.skip_previous_rounded, size: 32),
-                      ),
-                      IconButton.filled(
-                        tooltip: playback.hasError
-                            ? 'Retry playback'
-                            : playback.isPlaying
-                            ? (personal ? 'Pause audio' : 'Pause video')
-                            : (personal ? 'Play audio' : 'Play video'),
-                        onPressed: () => ref
-                            .read(playbackControllerProvider.notifier)
-                            .togglePlayback(),
-                        style: IconButton.styleFrom(
-                          backgroundColor: AppTheme.accent,
-                          foregroundColor: const Color(0xFF06200F),
-                          minimumSize: const Size(62, 62),
-                        ),
-                        icon: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 260),
-                          transitionBuilder: (child, animation) =>
-                              ScaleTransition(
-                                scale: CurvedAnimation(
-                                  parent: animation,
-                                  curve: Curves.easeOutBack,
-                                ),
-                                child: RotationTransition(
-                                  turns: Tween<double>(
-                                    begin: -0.08,
-                                    end: 0,
-                                  ).animate(animation),
-                                  child: child,
-                                ),
-                              ),
-                          child: Icon(
-                            key: ValueKey(
-                              '${playback.hasError}-${playback.isPlaying}',
-                            ),
-                            playback.hasError
-                                ? Icons.refresh_rounded
-                                : playback.isPlaying
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                            size: 35,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Next video',
-                        onPressed: playback.canGoNext
-                            ? () => ref
-                                  .read(playbackControllerProvider.notifier)
-                                  .next()
-                            : null,
-                        icon: const Icon(Icons.skip_next_rounded, size: 32),
-                      ),
-                      if (personal)
-                        IconButton(
-                          tooltip: switch (playback.repeatMode) {
-                            PlaybackRepeatMode.off => 'Turn repeat on',
-                            PlaybackRepeatMode.all => 'Repeat one song',
-                            PlaybackRepeatMode.one => 'Turn repeat off',
-                          },
-                          onPressed: () => ref
-                              .read(playbackControllerProvider.notifier)
-                              .cycleRepeatMode(),
-                          color: playback.repeatMode == PlaybackRepeatMode.off
-                              ? AppTheme.secondaryText
-                              : AppTheme.accent,
-                          icon: Icon(
-                            playback.repeatMode == PlaybackRepeatMode.one
-                                ? Icons.repeat_one_rounded
-                                : Icons.repeat_rounded,
-                            size: 21,
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 19),
-                  Container(
-                    padding: const EdgeInsets.all(13),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
+                    const SizedBox(height: 26),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.info_outline_rounded,
-                          color: AppTheme.accent,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 9),
                         Expanded(
-                          child: Text(
-                            playback.hasError
-                                ? 'This track could not be played after a retry. Tap retry to resolve a fresh stream, or choose another track.'
-                                : personal
-                                ? 'Personal playback continues in the background. Control it from the notification or lock screen.'
-                                : 'Playback stays in SpotHub. YouTube requires its embedded player to remain visible, so playback pauses when SpotHub goes to the background.',
-                            style: const TextStyle(
-                              color: AppTheme.secondaryText,
-                              fontSize: 11,
-                              height: 1.4,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 340),
+                            switchInCurve: Curves.easeOutCubic,
+                            switchOutCurve: Curves.easeInCubic,
+                            transitionBuilder: (child, animation) {
+                              final curve = CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOutCubic,
+                              );
+                              return ClipRect(
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0, 0.24),
+                                    end: Offset.zero,
+                                  ).animate(curve),
+                                  child: ScaleTransition(
+                                    alignment: Alignment.centerLeft,
+                                    scale: Tween<double>(
+                                      begin: 0.96,
+                                      end: 1,
+                                    ).animate(curve),
+                                    child: FadeTransition(
+                                      opacity: animation,
+                                      child: child,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Column(
+                              key: ValueKey('track-info-${track.videoId}'),
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  track.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 25,
+                                    height: 1.12,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.45,
+                                  ),
+                                ),
+                                const SizedBox(height: 7),
+                                Text(
+                                  track.channelName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppTheme.secondaryText,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                        ),
+                        if (personal && track.canPlayOnYouTube)
+                          IconButton(
+                            tooltip: isDownloaded
+                                ? 'Downloaded for offline playback'
+                                : 'Download for offline playback',
+                            onPressed: isDownloaded || _isDownloadingTrack
+                                ? null
+                                : () => _downloadTrack(track),
+                            color: isDownloaded
+                                ? AppTheme.accentPressed
+                                : AppTheme.secondaryText,
+                            icon: _isDownloadingTrack
+                                ? const SizedBox(
+                                    width: 19,
+                                    height: 19,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Icon(
+                                    isDownloaded
+                                        ? Icons.download_done_rounded
+                                        : Icons.download_for_offline_outlined,
+                                  ),
+                          ),
+                        AnimatedFavoriteButton(
+                          selected: isFavorite,
+                          onPressed: () => _toggleFavorite(track),
+                          size: 26,
                         ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    if (maxMilliseconds > 0) ...[
+                      SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          trackHeight: 4,
+                          thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 6,
+                          ),
+                          overlayShape: const RoundSliderOverlayShape(
+                            overlayRadius: 16,
+                          ),
+                        ),
+                        child: Slider(
+                          value: sliderValue,
+                          max: maxMilliseconds.toDouble(),
+                          activeColor: AppTheme.accentPressed,
+                          inactiveColor: Colors.white.withValues(alpha: 0.24),
+                          onChanged: playback.hasError
+                              ? null
+                              : (value) => setState(() => _dragValue = value),
+                          onChangeEnd: (value) {
+                            setState(() => _dragValue = null);
+                            ref
+                                .read(playbackControllerProvider.notifier)
+                                .seek(Duration(milliseconds: value.round()));
+                          },
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _time(playback.position),
+                              style: const TextStyle(
+                                color: AppTheme.primaryText,
+                                fontSize: 12,
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
+                            ),
+                            Text(
+                              '-${_time(remaining.isNegative ? Duration.zero : remaining)}',
+                              style: const TextStyle(
+                                color: AppTheme.secondaryText,
+                                fontSize: 12,
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else
+                      const SizedBox(height: 19),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        if (personal)
+                          AnimatedModeButton(
+                            active: playback.isShuffling,
+                            icon: Icons.shuffle_rounded,
+                            onPressed: () => ref
+                                .read(playbackControllerProvider.notifier)
+                                .toggleShuffle(),
+                            tooltip: playback.isShuffling
+                                ? 'Turn shuffle off'
+                                : 'Turn shuffle on',
+                            size: 23,
+                          )
+                        else
+                          const SizedBox(width: 42),
+                        IconButton(
+                          tooltip: 'Previous video',
+                          onPressed: playback.canGoPrevious
+                              ? () => ref
+                                    .read(playbackControllerProvider.notifier)
+                                    .previous()
+                              : null,
+                          icon: const Icon(
+                            Icons.skip_previous_rounded,
+                            size: 34,
+                          ),
+                        ),
+                        PressScale(
+                          pressedScale: 0.91,
+                          child: IconButton.filled(
+                            tooltip: playback.hasError
+                                ? 'Retry playback'
+                                : playback.isPlaying
+                                ? (personal ? 'Pause audio' : 'Pause video')
+                                : (personal ? 'Play audio' : 'Play video'),
+                            onPressed: () => ref
+                                .read(playbackControllerProvider.notifier)
+                                .togglePlayback(),
+                            style: IconButton.styleFrom(
+                              backgroundColor: AppTheme.primaryText,
+                              foregroundColor: AppTheme.background,
+                              minimumSize: const Size(68, 68),
+                              shape: const CircleBorder(),
+                            ),
+                            icon: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 190),
+                              transitionBuilder: (child, animation) =>
+                                  ScaleTransition(
+                                    scale: CurvedAnimation(
+                                      parent: animation,
+                                      curve: Curves.easeOutBack,
+                                    ),
+                                    child: RotationTransition(
+                                      turns: Tween<double>(
+                                        begin: -0.08,
+                                        end: 0,
+                                      ).animate(animation),
+                                      child: child,
+                                    ),
+                                  ),
+                              child: playback.hasError
+                                  ? const Icon(
+                                      Icons.refresh_rounded,
+                                      key: ValueKey('retry'),
+                                      size: 35,
+                                    )
+                                  : AnimatedPlayPauseIcon(
+                                      key: const ValueKey('play-pause'),
+                                      isPlaying: playback.isPlaying,
+                                      size: 34,
+                                      color: AppTheme.background,
+                                    ),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Next video',
+                          onPressed: playback.canGoNext
+                              ? () => ref
+                                    .read(playbackControllerProvider.notifier)
+                                    .next()
+                              : null,
+                          icon: const Icon(Icons.skip_next_rounded, size: 34),
+                        ),
+                        if (personal)
+                          AnimatedModeButton(
+                            active:
+                                playback.repeatMode != PlaybackRepeatMode.off,
+                            icon: Icons.repeat_rounded,
+                            activeIcon:
+                                playback.repeatMode == PlaybackRepeatMode.one
+                                ? Icons.repeat_one_rounded
+                                : Icons.repeat_rounded,
+                            onPressed: () => ref
+                                .read(playbackControllerProvider.notifier)
+                                .cycleRepeatMode(),
+                            tooltip: switch (playback.repeatMode) {
+                              PlaybackRepeatMode.off => 'Turn repeat on',
+                              PlaybackRepeatMode.all => 'Repeat one song',
+                              PlaybackRepeatMode.one => 'Turn repeat off',
+                            },
+                            size: 23,
+                          )
+                        else
+                          const SizedBox(width: 42),
+                      ],
+                    ),
+                    const SizedBox(height: 23),
+                    if (playback.hasError)
+                      _PlayerStatusCard(
+                        icon: Icons.error_outline_rounded,
+                        color: const Color(0xFFFF7B75),
+                        title: 'Playback needs attention',
+                        message:
+                            'Tap the play button to retry with a fresh stream, or choose another track.',
+                      )
+                    else
+                      _PlayerStatusCard(
+                        icon: personal
+                            ? Icons.graphic_eq_rounded
+                            : Icons.smart_display_outlined,
+                        color: AppTheme.accentPressed,
+                        title: personal ? 'YouTube audio' : 'YouTube player',
+                        message: personal
+                            ? 'Background audio and lock-screen controls are available for this build.'
+                            : 'Keep SpotHub open while the embedded YouTube player is active.',
+                      ),
+                    if (nextTrack != null) ...[
+                      const SizedBox(height: 27),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Up next',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () =>
+                                _showQueue(context, playback.isRadio),
+                            icon: const Icon(Icons.queue_music_rounded),
+                            label: const Text('Queue'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 7),
+                      TrackTile(
+                        track: nextTrack,
+                        queue: playback.queue,
+                        compact: true,
+                        onTap: () => unawaited(
+                          ref
+                              .read(playbackControllerProvider.notifier)
+                              .playTrack(
+                                nextTrack,
+                                queue: playback.queue,
+                                isRadio: playback.isRadio,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -510,79 +594,146 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen>
     }
   }
 
-  void _showQueue(
-    BuildContext context,
-    List<Track> queue,
-    int currentIndex,
-    bool isRadio,
-  ) {
+  void _showQueue(BuildContext context, bool isRadio) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppTheme.surface,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: SizedBox(
-          height: MediaQuery.sizeOf(context).height * 0.62,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 4, 20, 14),
-                child: Text(
-                  'Queue',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                ),
+      builder: (_) => _QueueSheet(isRadio: isRadio),
+    );
+  }
+}
+
+class _QueueSheet extends ConsumerWidget {
+  const _QueueSheet({required this.isRadio});
+
+  final bool isRadio;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final playback = ref.watch(playbackControllerProvider);
+    final queue = playback.queue;
+
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.62,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 4, 20, 3),
+              child: Text(
+                'Queue',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
               ),
-              Expanded(
-                child: queue.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No more videos in this queue.',
-                          style: TextStyle(color: AppTheme.secondaryText),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: queue.length,
-                        itemBuilder: (context, index) => ListTile(
-                          leading: index == currentIndex
-                              ? const Icon(
-                                  Icons.equalizer_rounded,
-                                  color: AppTheme.accent,
-                                )
-                              : Artwork(
-                                  url: queue[index].thumbnailUrl,
-                                  size: 46,
-                                ),
-                          title: Text(
-                            queue[index].title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Text(
+                'Hold and drag to reorder · Swipe non-playing songs to remove',
+                style: TextStyle(color: AppTheme.secondaryText, fontSize: 12),
+              ),
+            ),
+            Expanded(
+              child: queue.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No songs in this queue.',
+                        style: TextStyle(color: AppTheme.secondaryText),
+                      ),
+                    )
+                  : ReorderableListView.builder(
+                      buildDefaultDragHandles: false,
+                      itemCount: queue.length,
+                      onReorder: (oldIndex, newIndex) => unawaited(
+                        ref
+                            .read(playbackControllerProvider.notifier)
+                            .reorderQueue(oldIndex, newIndex),
+                      ),
+                      itemBuilder: (context, index) {
+                        final track = queue[index];
+                        final isCurrent = index == playback.queueIndex;
+                        return Dismissible(
+                          key: ValueKey('queue-${track.videoId}'),
+                          direction: isCurrent
+                              ? DismissDirection.none
+                              : DismissDirection.horizontal,
+                          background: const _QueueDismissBackground(
+                            alignment: Alignment.centerLeft,
                           ),
-                          subtitle: Text(
-                            queue[index].channelName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          secondaryBackground: const _QueueDismissBackground(
+                            alignment: Alignment.centerRight,
                           ),
-                          onTap: () {
-                            Navigator.pop(context);
+                          onDismissed: (_) => unawaited(
                             ref
                                 .read(playbackControllerProvider.notifier)
-                                .playTrack(
-                                  queue[index],
-                                  queue: queue,
-                                  isRadio: isRadio,
+                                .removeQueueTrack(track.videoId),
+                          ),
+                          child: ReorderableDelayedDragStartListener(
+                            index: index,
+                            child: ListTile(
+                              leading: isCurrent
+                                  ? const Icon(
+                                      Icons.equalizer_rounded,
+                                      color: AppTheme.accent,
+                                    )
+                                  : Artwork(url: track.thumbnailUrl, size: 46),
+                              title: Text(
+                                track.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                track.channelName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: const Icon(
+                                Icons.drag_handle_rounded,
+                                color: AppTheme.secondaryText,
+                              ),
+                              onTap: () {
+                                Navigator.pop(context);
+                                unawaited(
+                                  ref
+                                      .read(playbackControllerProvider.notifier)
+                                      .playTrack(
+                                        track,
+                                        queue: queue,
+                                        isRadio: isRadio,
+                                      ),
                                 );
-                          },
-                        ),
-                      ),
-              ),
-            ],
-          ),
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+class _QueueDismissBackground extends StatelessWidget {
+  const _QueueDismissBackground({required this.alignment});
+
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    padding: const EdgeInsets.symmetric(horizontal: 20),
+    alignment: alignment,
+    decoration: BoxDecoration(
+      color: const Color(0xFF572B30),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+  );
 }
 
 class _PlayerPlaceholder extends StatelessWidget {
@@ -607,6 +758,63 @@ class _PlayerPlaceholder extends StatelessWidget {
   );
 }
 
+class _PlayerStatusCard extends StatelessWidget {
+  const _PlayerStatusCard({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => AnimatedContainer(
+    duration: const Duration(milliseconds: 260),
+    curve: Curves.easeOutCubic,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: AppTheme.surface.withValues(alpha: 0.8),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: color.withValues(alpha: 0.18)),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.13),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 21),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 3),
+              Text(
+                message,
+                style: const TextStyle(
+                  color: AppTheme.secondaryText,
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class _PlayingArtwork extends StatefulWidget {
   const _PlayingArtwork({required this.isPlaying, required this.child});
 
@@ -623,6 +831,7 @@ class _PlayingArtworkState extends State<_PlayingArtwork>
     vsync: this,
     duration: const Duration(milliseconds: 1500),
   );
+  bool _reducedMotion = false;
 
   @override
   void initState() {
@@ -631,9 +840,26 @@ class _PlayingArtworkState extends State<_PlayingArtwork>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduced = MusicMotion.reduced(context);
+    if (_reducedMotion == reduced) return;
+    _reducedMotion = reduced;
+    if (reduced) {
+      _pulse.stop();
+    } else if (widget.isPlaying) {
+      _pulse.repeat(reverse: true);
+    }
+  }
+
+  @override
   void didUpdateWidget(covariant _PlayingArtwork oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.isPlaying == widget.isPlaying) return;
+    if (MusicMotion.reduced(context)) {
+      _pulse.stop();
+      return;
+    }
     if (widget.isPlaying) {
       _pulse.repeat(reverse: true);
     } else {
@@ -656,6 +882,6 @@ class _PlayingArtworkState extends State<_PlayingArtwork>
     animation: _pulse,
     child: widget.child,
     builder: (context, child) =>
-        Transform.scale(scale: 1 + (_pulse.value * 0.012), child: child),
+        Transform.scale(scale: 1 + (_pulse.value * 0.018), child: child),
   );
 }

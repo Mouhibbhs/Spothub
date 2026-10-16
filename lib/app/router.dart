@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/widgets/music_motion.dart';
 import '../features/home/presentation/home_screen.dart';
 import '../features/downloads/presentation/downloads_screen.dart';
 import '../features/library/presentation/library_screen.dart';
@@ -130,6 +131,7 @@ CustomTransitionPage<void> _motionPage(
   reverseTransitionDuration: const Duration(milliseconds: 300),
   child: child,
   transitionsBuilder: (context, animation, secondaryAnimation, pageChild) {
+    if (MusicMotion.reduced(context)) return pageChild;
     final entrance = CurvedAnimation(
       parent: animation,
       curve: Curves.easeOutCubic,
@@ -166,38 +168,46 @@ class _AnimatedBranchStack extends StatelessWidget {
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => Stack(
-    children: [
-      for (var index = 0; index < children.length; index++)
-        Positioned.fill(
-          child: AnimatedOpacity(
-            opacity: index == currentIndex ? 1 : 0,
-            duration: const Duration(milliseconds: 260),
-            curve: Curves.easeInOutCubic,
-            child: AnimatedSlide(
-              offset: index == currentIndex
-                  ? Offset.zero
-                  : const Offset(0, 0.025),
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              child: AnimatedScale(
-                scale: index == currentIndex ? 1 : 0.985,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutBack,
-                child: TickerMode(
-                  enabled: index == currentIndex,
-                  child: IgnorePointer(
-                    ignoring: index != currentIndex,
-                    child: ExcludeSemantics(
-                      excluding: index != currentIndex,
-                      child: children[index],
+  Widget build(BuildContext context) {
+    final duration = MusicMotion.reduced(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 260);
+    final slideDuration = MusicMotion.reduced(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 300);
+    return Stack(
+      children: [
+        for (var index = 0; index < children.length; index++)
+          Positioned.fill(
+            child: AnimatedOpacity(
+              opacity: index == currentIndex ? 1 : 0,
+              duration: duration,
+              curve: Curves.easeInOutCubic,
+              child: AnimatedSlide(
+                offset: index == currentIndex
+                    ? Offset.zero
+                    : const Offset(0, 0.025),
+                duration: slideDuration,
+                curve: Curves.easeOutCubic,
+                child: AnimatedScale(
+                  scale: index == currentIndex ? 1 : 0.985,
+                  duration: slideDuration,
+                  curve: Curves.easeOutBack,
+                  child: TickerMode(
+                    enabled: index == currentIndex,
+                    child: IgnorePointer(
+                      ignoring: index != currentIndex,
+                      child: ExcludeSemantics(
+                        excluding: index != currentIndex,
+                        child: children[index],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-    ],
-  );
+      ],
+    );
+  }
 }

@@ -10,6 +10,8 @@ import 'dart:convert';
 import '../../../app/providers.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/widgets/artwork.dart';
+import '../../../core/widgets/brand_header.dart';
+import '../../../core/widgets/music_motion.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/track_tile.dart';
 import '../../../features/library/data/playlist_repository.dart';
@@ -28,6 +30,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   bool _grid = false;
   bool _alphabetical = false;
   bool _importing = false;
+  bool _showSearch = false;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -69,6 +73,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final personal = ref.watch(personalFlavorProvider);
     final playlists = ref.watch(playlistsProvider);
@@ -81,14 +91,40 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final playlistItems = [...?playlists.asData?.value];
     final favoriteItems = [...?favorites.asData?.value];
     final recentItems = [...?recent.asData?.value];
+    final normalizedSearch = _searchController.text.trim().toLowerCase();
+    final visiblePlaylists = normalizedSearch.isEmpty
+        ? playlistItems
+        : playlistItems
+              .where(
+                (item) => item.name.toLowerCase().contains(normalizedSearch),
+              )
+              .toList(growable: false);
+    final visibleFavorites = normalizedSearch.isEmpty
+        ? favoriteItems
+        : favoriteItems
+              .where(
+                (track) =>
+                    track.title.toLowerCase().contains(normalizedSearch) ||
+                    track.channelName.toLowerCase().contains(normalizedSearch),
+              )
+              .toList(growable: false);
+    final visibleRecent = normalizedSearch.isEmpty
+        ? recentItems
+        : recentItems
+              .where(
+                (track) =>
+                    track.title.toLowerCase().contains(normalizedSearch) ||
+                    track.channelName.toLowerCase().contains(normalizedSearch),
+              )
+              .toList(growable: false);
     if (_alphabetical) {
-      playlistItems.sort(
+      visiblePlaylists.sort(
         (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
       );
-      favoriteItems.sort(
+      visibleFavorites.sort(
         (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
       );
-      recentItems.sort(
+      visibleRecent.sort(
         (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
       );
     }
@@ -97,99 +133,114 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       body: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 19, 18, 30),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 28),
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Your Library',
-                    style: Theme.of(context).textTheme.headlineMedium,
+            BrandHeader(
+              title: 'Your Library',
+              actions: [
+                IconButton(
+                  tooltip: _showSearch ? 'Close search' : 'Search your library',
+                  onPressed: () {
+                    setState(() {
+                      _showSearch = !_showSearch;
+                      if (!_showSearch) _searchController.clear();
+                    });
+                  },
+                  icon: Icon(
+                    _showSearch ? Icons.close_rounded : Icons.search_rounded,
                   ),
                 ),
                 if (personal)
-                  IconButton.filledTonal(
+                  IconButton(
                     tooltip: 'Downloads',
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppTheme.elevated,
-                      foregroundColor: AppTheme.accent,
-                    ),
                     onPressed: () => context.push('/downloads'),
-                    icon: const Icon(Icons.download_rounded),
+                    icon: const Icon(Icons.download_for_offline_outlined),
                   ),
-                IconButton(
-                  tooltip: _alphabetical ? 'Sort by newest' : 'Sort A to Z',
-                  onPressed: _toggleSort,
-                  icon: Icon(
-                    _alphabetical
-                        ? Icons.sort_by_alpha_rounded
-                        : Icons.swap_vert_rounded,
-                  ),
-                ),
-                IconButton(
-                  tooltip: _grid ? 'Show list' : 'Show grid',
-                  onPressed: _toggleGrid,
-                  icon: Icon(
-                    _grid ? Icons.view_list_rounded : Icons.grid_view_rounded,
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Import CSV playlist',
-                  onPressed: _importing ? null : _importPlaylist,
-                  icon: _importing
-                      ? const SizedBox.square(
-                          dimension: 19,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.file_upload_outlined),
-                ),
-                IconButton.filledTonal(
-                  tooltip: 'Create playlist',
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppTheme.elevated,
-                    foregroundColor: AppTheme.accent,
-                  ),
-                  onPressed: _createPlaylist,
-                  icon: const Icon(Icons.add_rounded),
-                ),
               ],
             ),
-            if (personal) ...[
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: _importing ? null : _importYouTubePlaylist,
-                icon: const Icon(Icons.playlist_add_rounded),
-                label: const Text('Import YouTube playlist from link'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.accent,
-                  alignment: Alignment.centerLeft,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
+            AnimatedSize(
+              duration: MusicMotion.track,
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: !_showSearch
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(5, 2, 5, 12),
+                      child: TextField(
+                        controller: _searchController,
+                        autofocus: true,
+                        onChanged: (_) => setState(() {}),
+                        textInputAction: TextInputAction.search,
+                        decoration: InputDecoration(
+                          hintText: 'Find in your library',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: IconButton(
+                            tooltip: 'Clear search',
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {});
+                            },
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                        ),
+                      ),
+                    ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(5, 2, 5, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Made for your listening',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
                   ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 15),
-            OutlinedButton.icon(
-              onPressed: () => context.push('/spotify'),
-              icon: const Icon(Icons.link_rounded),
-              label: const Text('Import Spotify playlist from link'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF1ED760),
-                side: BorderSide(
-                  color: const Color(0xFF1ED760).withValues(alpha: 0.4),
-                ),
-                alignment: Alignment.centerLeft,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
+                  IconButton(
+                    tooltip: _alphabetical ? 'Sort by newest' : 'Sort A to Z',
+                    onPressed: _toggleSort,
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(
+                      _alphabetical
+                          ? Icons.sort_by_alpha_rounded
+                          : Icons.swap_vert_rounded,
+                      color: _alphabetical
+                          ? AppTheme.accentPressed
+                          : AppTheme.secondaryText,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: _grid ? 'Show list' : 'Show grid',
+                    onPressed: _toggleGrid,
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(
+                      _grid ? Icons.view_list_rounded : Icons.grid_view_rounded,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: IconButton.filled(
+                      tooltip: 'Create or import',
+                      onPressed: _importing ? null : _showAddMenu,
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppTheme.primaryText,
+                        foregroundColor: AppTheme.background,
+                      ),
+                      icon: _importing
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.add_rounded, size: 25),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 15),
             SizedBox(
-              height: 38,
+              height: 40,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: [
@@ -201,21 +252,29 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   ])
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(filter),
-                        selected: _filter == filter,
-                        onSelected: (_) => setState(() => _filter = filter),
-                        labelStyle: TextStyle(
-                          color: _filter == filter
-                              ? const Color(0xFF111312)
-                              : Colors.white,
-                          fontWeight: FontWeight.w600,
+                      child: PressScale(
+                        child: ChoiceChip(
+                          label: Text(filter),
+                          selected: _filter == filter,
+                          onSelected: (_) => setState(() => _filter = filter),
+                          showCheckmark: false,
+                          selectedColor: AppTheme.accentPressed,
+                          backgroundColor: AppTheme.elevated,
+                          side: BorderSide.none,
+                          labelStyle: TextStyle(
+                            color: _filter == filter
+                                ? const Color(0xFF001F0B)
+                                : AppTheme.primaryText,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ),
                 ],
               ),
             ),
+            const SizedBox(height: 7),
             if (isLoading && playlistItems.isEmpty && favoriteItems.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(40),
@@ -230,11 +289,84 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     'Your saved items couldnâ€™t be loaded. Please reopen the app.',
               )
             else
-              ..._sections(playlistItems, favoriteItems, recentItems),
+              AnimatedSize(
+                duration: MusicMotion.track,
+                curve: Curves.easeInOutCubic,
+                alignment: Alignment.topCenter,
+                child: Column(
+                  key: ValueKey('$_filter-$_grid-$_alphabetical'),
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: _sections(
+                    visiblePlaylists,
+                    visibleFavorites,
+                    visibleRecent,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _showAddMenu() async {
+    final personal = ref.read(personalFlavorProvider);
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ListTile(
+                title: Text(
+                  'Add to your library',
+                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.add_box_outlined),
+                title: const Text('Create playlist'),
+                onTap: () => Navigator.pop(sheetContext, 'create'),
+              ),
+              if (personal)
+                ListTile(
+                  leading: const Icon(Icons.smart_display_outlined),
+                  title: const Text('Import YouTube playlist'),
+                  onTap: () => Navigator.pop(sheetContext, 'youtube'),
+                ),
+              ListTile(
+                leading: const Icon(Icons.link_rounded),
+                title: const Text('Import Spotify playlist'),
+                onTap: () => Navigator.pop(sheetContext, 'spotify'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.upload_file_outlined),
+                title: const Text('Import CSV playlist'),
+                onTap: () => Navigator.pop(sheetContext, 'csv'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case 'create':
+        await _createPlaylist();
+        break;
+      case 'youtube':
+        await _importYouTubePlaylist();
+        break;
+      case 'spotify':
+        if (mounted) context.push('/spotify');
+        break;
+      case 'csv':
+        await _importPlaylist();
+        break;
+    }
   }
 
   List<Widget> _sections(
@@ -491,20 +623,65 @@ class _PlaylistLibraryRow extends StatelessWidget {
   final PlaylistSummary playlist;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    leading: Artwork(
-      url: playlist.thumbnailUrl,
-      imageBytes: playlist.coverImageBytes,
-      size: 56,
-      icon: Icons.queue_music_rounded,
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 3),
+    child: PressScale(
+      pressedScale: 0.985,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.push('/playlist/${playlist.id}'),
+          borderRadius: BorderRadius.circular(9),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 6),
+            child: Row(
+              children: [
+                Hero(
+                  tag: 'playlist-cover-${playlist.id}',
+                  child: Artwork(
+                    url: playlist.thumbnailUrl,
+                    imageBytes: playlist.coverImageBytes,
+                    size: 54,
+                    radius: 5,
+                    icon: Icons.queue_music_rounded,
+                  ),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        playlist.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Playlist · ${playlist.trackCount} songs',
+                        style: const TextStyle(
+                          color: AppTheme.secondaryText,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.secondaryText,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     ),
-    title: Text(playlist.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-    subtitle: Text(
-      'Playlist Â· ${playlist.trackCount} videos',
-      style: const TextStyle(color: AppTheme.secondaryText, fontSize: 12),
-    ),
-    onTap: () => context.push('/playlist/${playlist.id}'),
   );
 }
 
@@ -513,35 +690,50 @@ class _PlaylistGridCard extends StatelessWidget {
   final PlaylistSummary playlist;
 
   @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: () => context.push('/playlist/${playlist.id}'),
-    borderRadius: BorderRadius.circular(14),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AspectRatio(
-          aspectRatio: 1,
-          child: Artwork(
-            url: playlist.thumbnailUrl,
-            imageBytes: playlist.coverImageBytes,
-            expand: true,
-            radius: 12,
-            icon: Icons.queue_music_rounded,
+  Widget build(BuildContext context) => PressScale(
+    pressedScale: 0.965,
+    child: Material(
+      color: AppTheme.surface,
+      borderRadius: BorderRadius.circular(9),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push('/playlist/${playlist.id}'),
+        child: Padding(
+          padding: const EdgeInsets.all(9),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Hero(
+                  tag: 'playlist-cover-${playlist.id}',
+                  child: Artwork(
+                    url: playlist.thumbnailUrl,
+                    imageBytes: playlist.coverImageBytes,
+                    expand: true,
+                    radius: 5,
+                    icon: Icons.queue_music_rounded,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                playlist.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                '${playlist.trackCount} songs',
+                style: const TextStyle(
+                  color: AppTheme.secondaryText,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 10),
-        Text(
-          playlist.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '${playlist.trackCount} videos',
-          style: const TextStyle(color: AppTheme.secondaryText, fontSize: 12),
-        ),
-      ],
+      ),
     ),
   );
 }

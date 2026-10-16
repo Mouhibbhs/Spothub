@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/app_theme.dart';
@@ -117,6 +118,8 @@ class SettingsScreen extends ConsumerWidget {
               body:
                   'SpotHub searches YouTube for each Spotify song and saves the matching videos in your library. YouTube remains SpotHubâ€™s only in-app playback source.',
             ),
+            const SizedBox(height: 11),
+            const _GitHubLinkCard(),
             const SizedBox(height: 22),
             const Center(
               child: Text(
@@ -129,6 +132,71 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _GitHubLinkCard extends StatelessWidget {
+  const _GitHubLinkCard();
+
+  static final Uri _repository = Uri.parse(
+    'https://github.com/Mouhibbhs/Spothub',
+  );
+
+  Future<void> _openRepository(BuildContext context) async {
+    final opened = await launchUrl(
+      _repository,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the GitHub repository.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: AppTheme.surface,
+    borderRadius: BorderRadius.circular(16),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => _openRepository(context),
+      child: Padding(
+        padding: const EdgeInsets.all(15),
+        child: Row(
+          children: [
+            const Icon(Icons.code_rounded, color: AppTheme.accent, size: 22),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'SpotHub on GitHub',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(height: 5),
+                  Text(
+                    'View the source, releases, and project updates.',
+                    style: TextStyle(
+                      color: AppTheme.secondaryText,
+                      fontSize: 12,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Icon(
+              Icons.open_in_new_rounded,
+              color: AppTheme.secondaryText,
+              size: 18,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _YouTubeApiKeyEditor extends ConsumerStatefulWidget {

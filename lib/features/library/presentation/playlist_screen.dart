@@ -84,6 +84,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
             children: [
               if (playlist != null) ...[
                 _PlaylistHeader(
+                  playlistId: playlist.id,
                   name: playlist.name,
                   count: playlist.trackCount,
                   thumbnailUrl: playlist.thumbnailUrl,
@@ -331,12 +332,15 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
 
 class _PlaylistHeader extends StatelessWidget {
   const _PlaylistHeader({
+    required this.playlistId,
     required this.name,
     required this.count,
     required this.thumbnailUrl,
     required this.coverImageBytes,
     required this.onChangeCover,
   });
+
+  final int playlistId;
   final String name;
   final int count;
   final String? thumbnailUrl;
@@ -344,40 +348,155 @@ class _PlaylistHeader extends StatelessWidget {
   final VoidCallback onChangeCover;
 
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Stack(
-        children: [
-          Artwork(
-            url: thumbnailUrl,
-            imageBytes: coverImageBytes,
-            size: 210,
-            radius: 10,
-            icon: Icons.queue_music_rounded,
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0.96, end: 1),
+    duration: const Duration(milliseconds: 420),
+    curve: Curves.easeOutBack,
+    builder: (context, scale, child) => Transform.scale(
+      scale: scale,
+      alignment: Alignment.topCenter,
+      child: child,
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        height: 372,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF31533C), Color(0xFF202521), AppTheme.background],
+            stops: [0, 0.48, 1],
           ),
-          Positioned(
-            right: 8,
-            bottom: 8,
-            child: IconButton.filledTonal(
-              tooltip: 'Change playlist cover',
-              onPressed: onChangeCover,
-              icon: const Icon(Icons.edit_rounded),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (thumbnailUrl != null || coverImageBytes != null)
+              Opacity(
+                opacity: 0.16,
+                child: Artwork(
+                  url: thumbnailUrl,
+                  imageBytes: coverImageBytes,
+                  expand: true,
+                  radius: 0,
+                  icon: Icons.queue_music_rounded,
+                ),
+              ),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0x22000000),
+                    Color(0x55000000),
+                    Color(0xFF131313),
+                  ],
+                  stops: [0.05, 0.55, 1],
+                ),
+              ),
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Hero(
+                      tag: 'playlist-cover-$playlistId',
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.36),
+                              blurRadius: 25,
+                              offset: const Offset(0, 13),
+                            ),
+                          ],
+                        ),
+                        child: Stack(
+                          children: [
+                            Artwork(
+                              url: thumbnailUrl,
+                              imageBytes: coverImageBytes,
+                              size: 206,
+                              radius: 8,
+                              icon: Icons.queue_music_rounded,
+                            ),
+                            Positioned(
+                              right: 8,
+                              bottom: 8,
+                              child: IconButton.filledTonal(
+                                tooltip: 'Change playlist cover',
+                                onPressed: onChangeCover,
+                                style: IconButton.styleFrom(
+                                  backgroundColor: AppTheme.background
+                                      .withValues(alpha: 0.84),
+                                  foregroundColor: AppTheme.primaryText,
+                                ),
+                                icon: const Icon(Icons.edit_rounded, size: 18),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Text(
+                    name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 26,
+                      height: 1.12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.45,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Container(
+                        width: 22,
+                        height: 22,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.accent,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.graphic_eq_rounded,
+                          color: Color(0xFF001F0B),
+                          size: 15,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'SpotHub',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(width: 7),
+                      const Text(
+                        '·',
+                        style: TextStyle(color: AppTheme.secondaryText),
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        '$count songs',
+                        style: const TextStyle(color: AppTheme.secondaryText),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      const SizedBox(height: 16),
-      Text(
-        name,
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
-      ),
-      const SizedBox(height: 5),
-      Text(
-        'SpotHub playlist · $count videos',
-        style: const TextStyle(color: AppTheme.secondaryText, fontSize: 12),
-      ),
-    ],
+    ),
   );
 }
 

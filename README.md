@@ -8,6 +8,8 @@ SpotHub is an Android music discovery app for searching, organizing, and playing
 
 Get the [latest SpotHub Personal APK](https://github.com/Mouhibbhs/Spothub/releases/latest), or browse [all versioned releases](https://github.com/Mouhibbhs/Spothub/releases).
 
+See [what changed from version 1.0.0 to 1.0.1](release-notes/v1.0.1.md).
+
 ## Features
 
 - Search YouTube and browse music categories.

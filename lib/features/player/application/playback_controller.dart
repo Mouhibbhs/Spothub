@@ -345,6 +345,79 @@ class PlaybackController extends Notifier<PlaybackState> {
     return true;
   }
 
+  Future<void> reorderQueue(int oldIndex, int newIndex) async {
+    final current = state;
+    if (current.track == null ||
+        oldIndex < 0 ||
+        oldIndex >= current.queue.length ||
+        newIndex < 0 ||
+        newIndex > current.queue.length) {
+      return;
+    }
+    if (oldIndex < newIndex) newIndex--;
+    if (oldIndex == newIndex ||
+        newIndex < 0 ||
+        newIndex >= current.queue.length) {
+      return;
+    }
+
+    final nextQueue = [...current.queue];
+    final movedTrack = nextQueue.removeAt(oldIndex);
+    nextQueue.insert(newIndex, movedTrack);
+    final nextQueueIndex = nextQueue.indexWhere(
+      (item) => item.videoId == current.track!.videoId,
+    );
+    if (nextQueueIndex < 0) return;
+
+    // Keep the manually arranged order when shuffle is turned off later.
+    _unshuffledQueue = List.unmodifiable(nextQueue);
+    state = current.copyWith(
+      queue: List.unmodifiable(nextQueue),
+      queueIndex: nextQueueIndex,
+    );
+    _schedulePlaybackSave(immediate: true);
+    await _updateAudioHandlerQueue(nextQueue, nextQueueIndex);
+  }
+
+  Future<bool> removeQueueTrack(String videoId) async {
+    final current = state;
+    final removeIndex = current.queue.indexWhere(
+      (item) => item.videoId == videoId,
+    );
+    if (removeIndex < 0 ||
+        removeIndex == current.queueIndex ||
+        current.queue.length <= 1 ||
+        current.track == null) {
+      return false;
+    }
+
+    final nextQueue = [...current.queue]..removeAt(removeIndex);
+    final nextQueueIndex = nextQueue.indexWhere(
+      (item) => item.videoId == current.track!.videoId,
+    );
+    if (nextQueueIndex < 0) return false;
+
+    final canonicalQueue = [..._unshuffledQueue]
+      ..removeWhere((item) => item.videoId == videoId);
+    _unshuffledQueue = List.unmodifiable(
+      canonicalQueue.isEmpty ? nextQueue : canonicalQueue,
+    );
+    state = current.copyWith(
+      queue: List.unmodifiable(nextQueue),
+      queueIndex: nextQueueIndex,
+    );
+    _schedulePlaybackSave(immediate: true);
+    await _updateAudioHandlerQueue(nextQueue, nextQueueIndex);
+    return true;
+  }
+
+  Future<void> _updateAudioHandlerQueue(List<Track> queue, int currentIndex) {
+    if (!ref.read(personalFlavorProvider)) return Future<void>.value();
+    return ref
+        .read(personalAudioHandlerProvider)
+        .setQueueOrder(queue, currentIndex);
+  }
+
   Future<void> _open(
     Track track, {
     required List<Track> queue,

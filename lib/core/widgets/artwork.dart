@@ -9,7 +9,7 @@ class Artwork extends StatelessWidget {
     required this.url,
     this.size = 52,
     this.expand = false,
-    this.radius = 6,
+    this.radius = 4,
     this.imageBytes,
     this.icon = Icons.music_note_rounded,
     super.key,
@@ -34,13 +34,7 @@ class Artwork extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF194A3A), Color(0xFF18251F)],
-            ),
-          ),
+          decoration: const BoxDecoration(color: AppTheme.elevated),
           child: Icon(
             icon,
             color: AppTheme.accent,
@@ -51,16 +45,18 @@ class Artwork extends StatelessWidget {
           Image(
             image: imageProvider,
             fit: BoxFit.cover,
+            gaplessPlayback: true,
+            filterQuality: FilterQuality.medium,
             errorBuilder: (context, error, stackTrace) => const SizedBox(),
             frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
               final loaded = frame != null || wasSynchronouslyLoaded;
               return AnimatedOpacity(
                 opacity: loaded ? 1 : 0,
-                duration: const Duration(milliseconds: 300),
+                duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOut,
                 child: AnimatedScale(
-                  scale: loaded ? 1 : 1.06,
-                  duration: const Duration(milliseconds: 420),
+                  scale: loaded ? 1 : 1.035,
+                  duration: const Duration(milliseconds: 320),
                   curve: Curves.easeOutCubic,
                   child: child,
                 ),

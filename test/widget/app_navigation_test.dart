@@ -21,8 +21,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('SpotHub'), findsOneWidget);
-    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Home'), findsNWidgets(2));
     expect(find.text('Search'), findsOneWidget);
     expect(find.text('Your Library'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
@@ -30,6 +29,6 @@ void main() {
     await tester.tap(find.text('Search'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Browse categories'), findsOneWidget);
+    expect(find.text('Explore your genres'), findsOneWidget);
   });
 }

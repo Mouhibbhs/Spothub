@@ -6,6 +6,7 @@ import '../../app/providers.dart';
 import '../../app/theme/app_theme.dart';
 import '../../features/player/application/playback_controller.dart';
 import 'artwork.dart';
+import 'music_motion.dart';
 
 class MiniPlayer extends ConsumerWidget {
   const MiniPlayer({super.key});
@@ -21,15 +22,15 @@ class MiniPlayer extends ConsumerWidget {
         ? (playback.position.inMilliseconds / max).clamp(0.0, 1.0)
         : null;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 3),
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
       child: Material(
         color: AppTheme.elevated,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(8),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => context.push('/now-playing'),
           child: SizedBox(
-            height: 60,
+            height: 56,
             child: Stack(
               children: [
                 Padding(
@@ -62,8 +63,8 @@ class MiniPlayer extends ConsumerWidget {
                           child: Artwork(
                             key: ValueKey(track.videoId),
                             url: track.thumbnailUrl,
-                            size: 42,
-                            radius: 10,
+                            size: 40,
+                            radius: 4,
                           ),
                         ),
                       ),
@@ -82,9 +83,12 @@ class MiniPlayer extends ConsumerWidget {
                                 key: ValueKey(track.videoId),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
+                                  color: playback.isPlaying
+                                      ? AppTheme.accent
+                                      : AppTheme.primaryText,
                                   fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
@@ -121,29 +125,10 @@ class MiniPlayer extends ConsumerWidget {
                             controller.togglePlayback();
                           }
                         },
-                        icon: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 240),
-                          transitionBuilder: (child, animation) =>
-                              ScaleTransition(
-                                scale: CurvedAnimation(
-                                  parent: animation,
-                                  curve: Curves.easeOutBack,
-                                ),
-                                child: RotationTransition(
-                                  turns: Tween<double>(
-                                    begin: -0.08,
-                                    end: 0,
-                                  ).animate(animation),
-                                  child: child,
-                                ),
-                              ),
-                          child: Icon(
-                            key: ValueKey(playback.isPlaying),
-                            playback.isPlaying
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                            size: 28,
-                          ),
+                        visualDensity: VisualDensity.compact,
+                        icon: AnimatedPlayPauseIcon(
+                          isPlaying: playback.isPlaying,
+                          size: 25,
                         ),
                       ),
                       IconButton(
@@ -153,7 +138,8 @@ class MiniPlayer extends ConsumerWidget {
                                   .read(playbackControllerProvider.notifier)
                                   .next()
                             : null,
-                        icon: const Icon(Icons.skip_next_rounded, size: 25),
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.skip_next_rounded, size: 23),
                       ),
                     ],
                   ),
@@ -171,7 +157,7 @@ class MiniPlayer extends ConsumerWidget {
                           LinearProgressIndicator(
                             value: progress,
                             minHeight: 2,
-                            backgroundColor: Colors.transparent,
+                            backgroundColor: const Color(0xFF535353),
                             color: AppTheme.accent,
                           ),
                     ),
@@ -181,7 +167,7 @@ class MiniPlayer extends ConsumerWidget {
           ),
         ),
       ),
-    );
+  );
   }
 }
 

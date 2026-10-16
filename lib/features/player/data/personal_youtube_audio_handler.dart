@@ -124,18 +124,17 @@ class PersonalYouTubeAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   Future<void> setQueueOrder(List<Track> tracks, int currentIndex) async {
-    if (tracks.isEmpty || currentIndex < 0 || currentIndex >= tracks.length) {
-      return;
-    }
+    if (tracks.isEmpty) return;
+    await _syncPreloadedTrack();
     final currentVideoId = currentTrack?.videoId;
-    if (currentVideoId != null &&
-        tracks[currentIndex].videoId != currentVideoId) {
-      return;
-    }
+    final activeIndex = currentVideoId == null
+        ? currentIndex
+        : tracks.indexWhere((track) => track.videoId == currentVideoId);
+    if (activeIndex < 0 || activeIndex >= tracks.length) return;
     _playRequestId++;
     await _discardPreloadedSource();
     _tracks = List.unmodifiable(tracks);
-    _index = currentIndex;
+    _index = activeIndex;
     queue.add(_tracks.map(_toMediaItem).toList(growable: false));
     _publishPlaybackState();
   }
@@ -262,8 +261,9 @@ class PersonalYouTubeAudioHandler extends BaseAudioHandler with SeekHandler {
     }
   }
 
-  int? _nextQueueIndex() {
-    if (_tracks.length < 2 || _repeatOne) return null;
+  int? _nextQueueIndex({bool respectRepeatOne = true}) {
+    if (_tracks.isEmpty || (respectRepeatOne && _repeatOne)) return null;
+    if (_tracks.length == 1) return _loopQueue ? 0 : null;
     if (_index < _tracks.length - 1) return _index + 1;
     return _loopQueue ? 0 : null;
   }
@@ -486,7 +486,7 @@ class PersonalYouTubeAudioHandler extends BaseAudioHandler with SeekHandler {
       }
     }
     _retriesCurrentTrack = 0;
-    if (_repeatOne) {
+    if (_repeatOne || (_loopQueue && _tracks.length == 1)) {
       await _player.seek(Duration.zero);
       unawaited(_player.play());
       return;
@@ -505,7 +505,7 @@ class PersonalYouTubeAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> skipToNext() async {
     await _syncPreloadedTrack();
     if (_tracks.isEmpty) return;
-    final nextIndex = _nextQueueIndex();
+    final nextIndex = _nextQueueIndex(respectRepeatOne: false);
     if (nextIndex == null) return;
     if (_preloadedQueueIndex == nextIndex && _player.currentIndex == 0) {
       _taskRemovedPosition = null;
@@ -615,7 +615,13 @@ class PersonalYouTubeAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   @override
-  Future<void> seek(Duration position) => _player.seek(position);
+  Future<void> seek(Duration position) {
+    // Clear any startup or task-removal timestamp so position updates reflect
+    // this explicit seek instead of briefly reporting the restored position.
+    _pendingStartPosition = null;
+    _taskRemovedPosition = null;
+    return _player.seek(position);
+  }
 
   @override
   Future<void> stop() async {

@@ -10,6 +10,7 @@ import '../../features/player/application/playback_controller.dart';
 import '../../features/downloads/presentation/download_actions.dart';
 import '../../features/search/domain/track.dart';
 import 'artwork.dart';
+import 'music_motion.dart';
 
 class TrackTile extends ConsumerWidget {
   const TrackTile({
@@ -17,6 +18,7 @@ class TrackTile extends ConsumerWidget {
     this.queue = const [],
     this.radioQuery,
     this.trailing,
+    this.onTap,
     this.compact = false,
     super.key,
   });
@@ -25,6 +27,7 @@ class TrackTile extends ConsumerWidget {
   final List<Track> queue;
   final String? radioQuery;
   final Widget? trailing;
+  final VoidCallback? onTap;
   final bool compact;
 
   @override
@@ -39,112 +42,170 @@ class TrackTile extends ConsumerWidget {
       data: (value) => value,
       orElse: () => false,
     );
-    return InkWell(
-      onTap: () => _play(context, ref),
-      borderRadius: BorderRadius.circular(18),
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: compact ? 5 : 8),
-        child: Row(
-          children: [
-            Artwork(url: track.thumbnailUrl, size: compact ? 46 : 52),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    final playback = ref.watch(playbackControllerProvider);
+    final isCurrent = playback.track?.videoId == track.videoId;
+
+    return PressScale(
+      pressedScale: 0.987,
+      child: AnimatedContainer(
+        duration: MusicMotion.icon,
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: isCurrent
+              ? AppTheme.accent.withValues(
+                  alpha: playback.isPlaying ? 0.10 : 0.055,
+                )
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap ?? () => _play(context, ref),
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: 7,
+                vertical: compact ? 5 : 8,
+              ),
+              child: Row(
                 children: [
-                  Text(
-                    track.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Artwork(
+                        url: track.thumbnailUrl,
+                        size: compact ? 46 : 52,
+                        radius: 4,
+                      ),
+                      if (isCurrent && playback.isPlaying)
+                        Container(
+                          width: compact ? 46 : 52,
+                          height: compact ? 46 : 52,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.58),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Icon(
+                            Icons.graphic_eq_rounded,
+                            color: AppTheme.accentPressed,
+                            size: 24,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          track.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isCurrent
+                                ? AppTheme.accentPressed
+                                : AppTheme.primaryText,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          track.channelName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppTheme.secondaryText,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    track.channelName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                  ?trailing,
+                  PopupMenuButton<String>(
+                    tooltip: 'More options',
+                    icon: const Icon(
+                      Icons.more_horiz,
                       color: AppTheme.secondaryText,
-                      fontSize: 12,
                     ),
+                    onSelected: (value) async {
+                      if (value == 'play') {
+                        _play(context, ref);
+                      } else if (value == 'favorite') {
+                        final added = await ref
+                            .read(trackRepositoryProvider)
+                            .toggleFavorite(track);
+                        if (!context.mounted) return;
+                        ref.invalidate(favoritesProvider);
+                        ref.invalidate(isFavoriteProvider(track.videoId));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              added
+                                  ? 'Added to Liked Songs'
+                                  : 'Removed from Liked Songs',
+                            ),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      } else if (value == 'playlist') {
+                        await _addToPlaylist(context, ref);
+                      } else if (value == 'queue-next') {
+                        final added = await ref
+                            .read(playbackControllerProvider.notifier)
+                            .addToQueueNext(track);
+                        if (!context.mounted) return;
+                        _showMessage(
+                          context,
+                          added
+                              ? 'Added to play next.'
+                              : 'This song is already playing.',
+                        );
+                      } else if (value == 'download') {
+                        await downloadTracks(context, ref, [track]);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'play',
+                        child: Text('Play now'),
+                      ),
+                      if (personal)
+                        const PopupMenuItem(
+                          value: 'queue-next',
+                          child: Text('Add to queue'),
+                        ),
+                      if (personal && isDownloadable)
+                        PopupMenuItem(
+                          value: 'download',
+                          enabled: !isDownloaded,
+                          child: Text(
+                            isDownloaded
+                                ? 'Downloaded'
+                                : 'Download for offline use',
+                          ),
+                        ),
+                      PopupMenuItem(
+                        value: 'favorite',
+                        child: Text(
+                          isFavorite
+                              ? 'Remove from Liked Songs'
+                              : 'Add to Liked Songs',
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'playlist',
+                        child: Text('Add to playlist'),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            ?trailing,
-            PopupMenuButton<String>(
-              tooltip: 'More options',
-              icon: const Icon(Icons.more_horiz, color: AppTheme.secondaryText),
-              onSelected: (value) async {
-                if (value == 'play') {
-                  _play(context, ref);
-                } else if (value == 'favorite') {
-                  final added = await ref
-                      .read(trackRepositoryProvider)
-                      .toggleFavorite(track);
-                  if (!context.mounted) return;
-                  ref.invalidate(favoritesProvider);
-                  ref.invalidate(isFavoriteProvider(track.videoId));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        added
-                            ? 'Added to Liked Songs'
-                            : 'Removed from Liked Songs',
-                      ),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                } else if (value == 'playlist') {
-                  await _addToPlaylist(context, ref);
-                } else if (value == 'queue-next') {
-                  final added = await ref
-                      .read(playbackControllerProvider.notifier)
-                      .addToQueueNext(track);
-                  if (!context.mounted) return;
-                  _showMessage(
-                    context,
-                    added
-                        ? 'Added to play next.'
-                        : 'This song is already playing.',
-                  );
-                } else if (value == 'download') {
-                  await downloadTracks(context, ref, [track]);
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(value: 'play', child: Text('Play now')),
-                if (personal)
-                  const PopupMenuItem(
-                    value: 'queue-next',
-                    child: Text('Add to queue'),
-                  ),
-                if (personal && isDownloadable)
-                  PopupMenuItem(
-                    value: 'download',
-                    enabled: !isDownloaded,
-                    child: Text(
-                      isDownloaded ? 'Downloaded' : 'Download for offline use',
-                    ),
-                  ),
-                PopupMenuItem(
-                  value: 'favorite',
-                  child: Text(
-                    isFavorite
-                        ? 'Remove from Liked Songs'
-                        : 'Add to Liked Songs',
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'playlist',
-                  child: Text('Add to playlist'),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );

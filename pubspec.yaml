@@ -1,7 +1,7 @@
 name: spothub
 description: A music discovery library with YouTube-backed search and playback.
 publish_to: none
-version: 1.0.0+1
+version: 1.0.1+6
 
 environment:
   sdk: '>=3.10.0 <4.0.0'
@@ -37,4 +37,5 @@ flutter:
   default-flavor: official
   uses-material-design: true
   assets:
+    - final-icon.png
     - assets/playlist-import-example.csv
